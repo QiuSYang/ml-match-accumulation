@@ -5,9 +5,10 @@ import tensorflow as tf
 from flyai.model.base import Base
 from tensorflow.python.saved_model import tag_constants
 import numpy as np
-from path import MODEL_PATH
+import path
 import time
-TENSORFLOW_MODEL_DIR = "best"
+import shutil
+import kashgari
 
 
 class Model(Base):
@@ -17,36 +18,45 @@ class Model(Base):
     def predict(self, **data):
         '''
         使用模型
-        :param path: 模型所在的路径
-        :param name: 模型的名字
         :param data: 模型的输入参数
         :return:
         '''
+        # load 已经训练好的模型
+        load_model = kashgari.utils.load_model(model_path=path.MODEL_PATH)
 
-        return self.data.to_categorys()
+        data_list = [data.get('source').strip().split(' ')]
+        single_predict_result = load_model.predict(data_list)
+
+        return single_predict_result[0]
 
     def predict_all(self, datas):
-
-        ratings = []
-        for data in datas:
-            ratings.append(self.data.to_categorys())
-        return ratings
-
-    def save_model(self, session, path, name=TENSORFLOW_MODEL_DIR, overwrite=False):
-        '''
-        保存模型
-        :param session: 训练模型的sessopm
-        :param path: 要保存模型的路径
-        :param name: 要保存模型的名字
-        :param overwrite: 是否覆盖当前模型
+        """ 使用模型连续预测
+        :param datas:
         :return:
-        '''
-        if overwrite:
-            self.delete_file(path)
+        """
+        # load 已经训练好的模型
+        load_model = kashgari.utils.load_model(model_path=path.MODEL_PATH)
 
-        builder = tf.saved_model.builder.SavedModelBuilder(os.path.join(path, name))
-        builder.add_meta_graph_and_variables(session, [tf.saved_model.tag_constants.SERVING])
-        builder.save()
+        test_data_list = []
+        for data in datas:
+            test_data_list.append(data.get('source').strip().split(' '))
+
+        predict_result = load_model.predict(test_data_list)
+
+        return predict_result
+
+    def save_model(self, ner_net):
+        """
+        :param ner_net: NerNet类对象
+        :return:
+        """
+        ner_net.model.save(path.MODEL_PATH)
+
+        remove_file = os.path.join(path.MODEL_PATH, 'model_weights.h5')
+        os.remove(remove_file)
+        # 将损失最小的模型拷贝到对应路径
+        shutil.move('entity_weights.h5', path.MODEL_PATH)
+        os.rename(os.path.join(path.MODEL_PATH, 'entity_weights.h5'), os.path.join(path.MODEL_PATH, 'model_weights.h5'))
 
     def batch_iter(self, x, y, batch_size=128):
         '''

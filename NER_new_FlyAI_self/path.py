@@ -10,4 +10,4 @@ MODEL_PATH = os.path.join(sys.path[0], 'data', 'output', 'model')
 # 训练log的输出路径
 LOG_PATH = os.path.join(sys.path[0], 'data', 'output', 'logs')
 # bert路径
-BERT_PATH = os.path.join(sys.path[0], 'bert', )
+BERT_PATH = os.path.join(sys.path[0], 'data', 'input', 'model')

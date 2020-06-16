@@ -2,3 +2,4 @@ flyai
 numpy
 tensorflow==1.15.0
 kashgari==1.1.5
+scikit-learn
