@@ -1,4 +1,4 @@
 flyai
 numpy
-tensorflow==1.15.0
+tensorflow==1.15.2
 kashgari==1.1.5
