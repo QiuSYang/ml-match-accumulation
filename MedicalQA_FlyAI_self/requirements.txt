@@ -1,0 +1,12 @@
+flyai-gpu
+six
+jieba
+numpy
+regex
+ufile
+requests
+tornado
+scikit-learn
+tensorflow-gpu==1.14.0
+tensorflow-hub
+keras==2.2.5
