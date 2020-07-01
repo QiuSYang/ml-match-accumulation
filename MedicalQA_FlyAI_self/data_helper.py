@@ -4,6 +4,8 @@
 import os
 import json
 import jieba
+import torch
+from torch.utils.data import Dataset
 
 
 def load_dict(dictFile):
@@ -70,6 +72,47 @@ def get_batches(targets, sources, batch_size, source_padding, target_padding):
         pad_targets_batch = pad_sentence_batch(target_batch, target_padding)
 
         yield pad_targets_batch, pad_sources_batch, target_len_batch, source_len_batch
+
+
+def get_sequence_ids(data_df, tokenizer, n_ctx):
+    """对原始语料进行处理，将原始语料转换为用于train的token id，对于每个context，
+        将其处于成如下形式"[CLS]department[SEP]title[SEP]ask[SEP]answer[SEP]"
+    :param args:
+    :param tokenizer:
+    :param n_ctx:GPT2模型的上下文窗口大小,对于超过n_ctx(n_ctx包括了特殊字符)的context进行截断
+    :return:
+    """
+    datasets = []
+    for line in data_df.itertuples():
+        # 每个context以[CLS]开头
+        row_ids = [tokenizer.cls_token_id]
+        for column in data_df.columns:
+            text = getattr(line, column).strip()
+            # temp_ids = tokenizer.convert_tokens_to_ids(list(text))
+            # 将每个字符转为i加入列表
+            row_ids.extend([tokenizer.convert_tokens_to_ids(word) for word in text])
+            # 单个column utterance之后添加[SEP]
+            row_ids.append(tokenizer.sep_token_id)
+
+        # 对超过n_ctx的长度进行截断,否则GPT2模型会报错
+        row_ids = row_ids[:n_ctx]
+        datasets.append(row_ids)
+
+    return datasets
+
+
+class MedicalQADataset(Dataset):
+    """自定义医疗QA数据集"""
+    def __init__(self, dataset_ids):
+        self.dataset_ids = dataset_ids
+
+    def __getitem__(self, item):
+
+        return self.dataset_ids[item]
+
+    def __len__(self):
+
+        return len(self.dataset_ids)
 
 
 if __name__ == "__main__":
