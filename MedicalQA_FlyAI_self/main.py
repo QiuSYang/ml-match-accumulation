@@ -164,7 +164,7 @@ class Main(FlyAI):
                         accuracy = accuracy / self.args.gradient_accumulation
                     loss.backward()
                     # 梯度裁剪解决的是梯度消失或爆炸的问题，即设定阈值
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), self.args.max_grad_norm)
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
                     # 进行一定step的梯度累计之后，更新参数
                     if (batch_idx + 1) % self.args.gradient_accumulation == 0:
                         running_loss += loss.item()
