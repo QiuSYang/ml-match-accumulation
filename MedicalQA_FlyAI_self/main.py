@@ -8,7 +8,7 @@ import numpy as np
 from flyai.framework import FlyAI
 from flyai.data_helper import DataHelper
 from sklearn.model_selection import train_test_split
-from path import DATA_PATH, MODEL_PATH, MODEL_PATH_BEST
+from path import DATA_PATH, MODEL_PATH, MODEL_PATH_BEST, PRE_MODEL_PATH
 import pandas as pd
 from data_helper import *
 import transformers
@@ -338,15 +338,17 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # pre_train_model_path = get_pre_train_model()
-    #
-    # # 更新预训练模型参数
-    # args.model_config = os.path.join(pre_train_model_path, 'config.json')
-    # args.vocab_path = os.path.join(pre_train_model_path, 'vocab_small.txt')
-    # args.pretrained_model = pre_train_model_path
+    pre_train_model_path = get_pre_train_model()
+
+    pre_train_model_path = PRE_MODEL_PATH
+
+    # 更新预训练模型参数
+    args.model_config = os.path.join(pre_train_model_path, 'config.json')
+    args.vocab_path = os.path.join(pre_train_model_path, 'vocab_small.txt')
+    args.pretrained_model = pre_train_model_path
 
     main = Main(args)
-    # main.download_data()
+    main.download_data()
     main.deal_with_data()
     main.train()
 
