@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-import datetime
+import time
 import argparse
 import random
 import numpy as np
@@ -134,7 +134,7 @@ class Main(FlyAI):
                                                                  num_warmup_steps=self.args.warmup_steps,
                                                                  num_training_steps=-1)
 
-        print("training start.")
+        print("Training start.")
         # 用于统计每次梯度累计的loss
         running_loss = 0
         # 统计一共训练了多少个step
@@ -145,7 +145,7 @@ class Main(FlyAI):
         best_loss = np.inf
         best_accuracy = -1
         for epoch in range(self.args.EPOCHS):
-            epoch_start_time = datetime.time()
+            epoch_start_time = time.clock()
             for batch_idx, input_ids in enumerate(train_data_loader):
                 # 注意：GPT2模型的forward()函数, 是对于给定的context, 生成一个token，而不是生成一串token
                 # GPT2Model的输入为n个token_id时, 输出也是n个hidden_state, 使用第n个hidden_state预测第n+1个token
@@ -184,15 +184,15 @@ class Main(FlyAI):
                     else:
                         print(str(exception))
                         raise exception
-            print('saving model for epoch {}'.format(epoch + 1))
+            print('Saving model for epoch {}'.format(epoch + 1))
             model_path = os.path.join(MODEL_PATH, 'model_epoch_{}'.format(epoch + 1))
             if not os.path.exists(model_path):
                 os.mkdir(model_path)
             model_to_save = self.model.module if hasattr(self.model, 'module') else self.model
             model_to_save.save_pretrained(model_path)
-            print('epoch {} finished.'.format(epoch + 1))
-            epoch_finish_time = datetime.time()
-            print('time for one epoch: {}'.format(epoch_finish_time - epoch_start_time))
+            print('The epoch {} finished.'.format(epoch + 1))
+            epoch_finish_time = time.clock()
+            print('Time for one epoch: {}'.format(epoch_finish_time - epoch_start_time))
 
             # 每个epoch评估一次模型, 交叉验证
             eval_loss, eval_accuracy = self.evaluate()
@@ -200,10 +200,10 @@ class Main(FlyAI):
                 best_loss = eval_loss
                 if not os.path.exists(MODEL_PATH_BEST):
                     os.mkdir(MODEL_PATH_BEST)
-                print('save best model.')
+                print('Save best model.')
                 model_to_save.save_pretrained(MODEL_PATH_BEST)
 
-        print('training finished.')
+        print('Training finished.')
 
     def evaluate(self):
         """模型评估"""
