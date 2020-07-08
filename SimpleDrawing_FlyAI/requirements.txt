@@ -1,0 +1,4 @@
+flyai
+numpy
+Pillow
+torch==1.5.0
