@@ -145,7 +145,7 @@ class Main(FlyAI):
         best_loss = np.inf
         best_accuracy = -1
         for epoch in range(self.args.EPOCHS):
-            epoch_start_time = time.clock()
+            # epoch_start_time = time.clock()
             for batch_idx, input_ids in enumerate(train_data_loader):
                 # 注意：GPT2模型的forward()函数, 是对于给定的context, 生成一个token，而不是生成一串token
                 # GPT2Model的输入为n个token_id时, 输出也是n个hidden_state, 使用第n个hidden_state预测第n+1个token
@@ -191,8 +191,8 @@ class Main(FlyAI):
             model_to_save = self.model.module if hasattr(self.model, 'module') else self.model
             model_to_save.save_pretrained(model_path)
             print('The epoch {} finished.'.format(epoch + 1))
-            epoch_finish_time = time.clock()
-            print('Time for one epoch: {}'.format(epoch_finish_time - epoch_start_time))
+            # epoch_finish_time = time.clock()
+            # print('Time for one epoch: {}'.format(epoch_finish_time - epoch_start_time))
 
             # 每个epoch评估一次模型, 交叉验证
             eval_loss, eval_accuracy = self.evaluate()
@@ -217,7 +217,7 @@ class Main(FlyAI):
         eval_accuracy_total = 0.0
         with torch.no_grad():
             for batch_idx, input_ids in enumerate(test_data_loader):
-                input_ids.to(self.device)
+                input_ids = input_ids.to(self.device)
                 outputs = self.model(input_ids=input_ids)
                 loss, accuracy = self.calculate_loss_and_accuracy(outputs,
                                                                   labels=input_ids,
