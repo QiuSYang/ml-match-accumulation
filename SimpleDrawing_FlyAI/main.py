@@ -3,20 +3,25 @@
 Created on Mon Oct 30 19:44:02 2017
 @author: user
 """
-
-import argparse
-from flyai.dataset import Dataset
-from model import Model, _stack_it
-from path import MODEL_PATH, DATA_PATH
 import os
+import logging
 import json
+import math
+import cv2
+import argparse
+import flyai
+from flyai.dataset import Dataset as fly_Dataset
+from path import MODEL_PATH, DATA_PATH
 import numpy as np
 import pandas as pd
-from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
-from keras.models import Sequential
-from keras.layers import BatchNormalization, Conv1D, LSTM, Dense, Dropout
+import torch
+import torch.optim as optim
+from torch.optim import lr_scheduler
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
+from net import Net
 
-'''
+"""
 样例代码仅供参考学习，可以自己修改实现逻辑。
 Tensorflow模版项目下载： https://www.flyai.com/python/tensorflow_template.zip
 PyTorch模版项目下载： https://www.flyai.com/python/pytorch_template.zip
@@ -27,98 +32,233 @@ Keras模版项目下载： https://www.flyai.com/python/keras_template.zip
 学习资料可查看文档中心：https://doc.flyai.com/
 常见问题：https://doc.flyai.com/question.html
 遇到问题不要着急，添加小姐姐微信，扫描项目里面的：FlyAI小助手二维码-小姐姐在线解答您的问题.png
-'''
+"""
 
-'''
-项目的超参
-'''
-parser = argparse.ArgumentParser()
-parser.add_argument("-e", "--EPOCHS", default=10, type=int, help="train epochs")
-parser.add_argument("-b", "--BATCH", default=2, type=int, help="batch size")
-args = parser.parse_args()
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(filename)s - %(levelname)s - %(message)s',
+                    datefmt='%m/%d/%Y %H:%M:%S')
+_logger = logging.getLogger(__name__)
 
-'''
-flyai库中的提供的数据处理方法
-传入整个数据训练多少轮，每批次批大小
-进入Dataset类中可查看方法说明
-'''
-dataset = Dataset(epochs=args.EPOCHS, batch=args.BATCH)
-model = Model(dataset)
-x_train, y_train, x_val, y_val = dataset.get_all_processor_data()
-
-all_classes = 40
-
-def get_xy(json_path_list, label_list):
-    # ['draws/draw_490253.json', ...] [ 9, ...]
-    out_list = []
-    for i in range(len(json_path_list)):
-        out_dict = {}
-        json_path = os.path.join(DATA_PATH, json_path_list[i])
-        with open(json_path) as f:
-            draw = json.load(f)
-        out_dict['drawing'] = draw['drawing']
-        out_dict['label'] = label_list[i]
-        out_list.append(out_dict)
-    out_df = pd.DataFrame(out_list) # 加载数据
-    out_df['drawing'] = out_df['drawing'].map(_stack_it)
-    return out_df
+data_transforms = {
+    'train': transforms.Compose([
+        transforms.Resize(224),
+        # transforms.RandomResizedCrop(224),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ]),
+    'val': transforms.Compose([
+        transforms.Resize(224),
+        # transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ]),
+}
 
 
-train_df = get_xy(x_train, y_train)
-valid_df = get_xy(x_val, y_val)
+class CustomDataset(Dataset):
+    def __init__(self, json_path_list, label_list,
+                 image_height=300, image_width=300, grid_expand=False):
+        """
+        :param json_path_list: 所有文件列表, json文件包含一个字段‘drawing’, 包含所有绘制点x, y坐标点
+        :param label_list: 每个json文件对应的label
+        :param image_height: 坐标在图像上表示的图像高度
+        :param image_width: 坐标在图像上表示的图像宽度
+        :param grid_expand: 是否需要将对应单点8邻域扩张
+        """
+        self.json_path_list = json_path_list
+        self.label_list = label_list
+        self.grid_expand = grid_expand
+        self.expand_border = [(-1, -1), (-1, 0), (-1, 1),
+                              (0, -1), (0, 0), (0, 1),
+                              (1, -1), (1, 0), (1, 1)]
+        self.image_height = image_height
+        self.image_width = image_width
+        self.image_show = True
 
-def get_Xy(in_df):
-    X = np.stack(in_df['drawing'], 0)
-    y = np.zeros((X.shape[0], all_classes))
-    for i, index in enumerate(in_df['label'].values):
-        y[i][index] = 1
-    return X, y
+    def __getitem__(self, index):
+        json_path = os.path.join(DATA_PATH, self.json_path_list[index])
+        with open(json_path, mode='r', encoding='utf-8') as f:
+            # load json file content
+            xy_coordinates_dict = json.load(f)
+        # 将坐标转为图像数据
+        image_data = self.xy_to_image(xy_coordinates=xy_coordinates_dict.get('drawing'))
+        label = self.label_list[index]
 
-train_X, train_y = get_Xy(train_df)
-valid_X, valid_y = get_Xy(valid_df)
-print(train_X.shape, train_y.shape)
-print(valid_X.shape, valid_y.shape)
-'''
-实现自己的网络结构
-'''
+        return image_data, label
 
-stroke_read_model = Sequential()
-stroke_read_model.add(BatchNormalization(input_shape=(None,)+train_X.shape[2:]))
-stroke_read_model.add(Conv1D(48, (5,)))
-stroke_read_model.add(Dropout(0.3))
-stroke_read_model.add(Conv1D(64, (5,)))
-stroke_read_model.add(Dropout(0.3))
-stroke_read_model.add(Conv1D(96, (3,)))
-stroke_read_model.add(Dropout(0.3))
-stroke_read_model.add(LSTM(128, return_sequences = True))
-stroke_read_model.add(Dropout(0.3))
-stroke_read_model.add(LSTM(128, return_sequences = False))
-stroke_read_model.add(Dropout(0.3))
-stroke_read_model.add(Dense(512))
-stroke_read_model.add(Dropout(0.3))
-stroke_read_model.add(Dense(all_classes, activation = 'softmax'))
-stroke_read_model.compile(optimizer='adam',
-                          loss='categorical_crossentropy',
-                          metrics=['categorical_accuracy'])
-stroke_read_model.summary()
+    def __len__(self):
+        return len(self.json_path_list)
 
-'''
-dataset.get_step() 获取数据的总迭代次数
-'''
-KERAS_MODEL_NAME = "model.h5"
-if not os.path.exists(MODEL_PATH):
-    os.makedirs(MODEL_PATH)
+    def xy_to_image(self, xy_coordinates):
+        image_data = np.zeros((self.image_height, self.image_width), dtype=np.float)
+        y, x = [], []
+        for xy in xy_coordinates:
+            # 有所有坐标入列(横纵坐标)
+            y.extend(xy[0])
+            x.extend(xy[1])
+        x_max, x_min = max(x), min(x)
+        y_max, y_min = max(y), min(y)
+        width, height = x_max - x_min + 1, y_max - y_min + 1
+        d_width = math.floor((self.image_width - width) / 2.0 + 0.5)
+        d_height = math.floor((self.image_height - height) / 2.0 + 0.5)
 
-checkpoint = ModelCheckpoint(os.path.join(MODEL_PATH, KERAS_MODEL_NAME), monitor='val_loss', verbose=1,
-                             save_best_only=True, mode='min', save_weights_only=False)
-reduceLROnPlat = ReduceLROnPlateau(monitor='val_loss', factor=0.8, patience=10,
-                                   verbose=1, mode='auto', epsilon=0.0001, cooldown=5, min_lr=0.0001)
-early = EarlyStopping(monitor="val_loss",
-                      mode="min",
-                      patience=5)
-callbacks_list = [checkpoint, early, reduceLROnPlat]
-stroke_read_model.fit(x=train_X, y=train_y,
-                      validation_data=(valid_X, valid_y),
-                      batch_size=2,
-                      epochs=1,
-                      callbacks=callbacks_list)
+        x = np.array(x) + d_width  # 全部加上偏移量
+        y = np.array(y) + d_height
+
+        for i in range(len(x)):
+            if self.grid_expand:
+                for dx, dy in self.expand_border:
+                    y_i, x_i = y[i] + dy, x[i] + dx
+                    # 边界判定
+                    if y_i < 0:
+                        y_i = 0
+                    elif y_i >= self.image_height:
+                        y_i = self.image_height - 1
+                    if x_i < 0:
+                        x_i = 0
+                    elif x_i >= self.image_width:
+                        x_i = self.image_width - 1
+
+                    image_data[y_i, x_i] = 1
+            else:
+                image_data[y[i], x[i]] = 1
+
+        if self.image_show:
+            cv2.imshow('image_data', image_data)
+            cv2.waitKey()
+            cv2.destroyAllWindows()
+
+        return image_data
+
+
+class Main(object):
+    def __init__(self, args):
+        """
+        :param args: 超参数
+        """
+        self.args = args
+        """
+        flyai库中的提供的数据处理方法
+        传入整个数据训练多少轮，每批次批大小
+        进入Dataset类中可查看方法说明
+        """
+        # self.dataset = fly_Dataset(epochs=self.args.EPOCHS, batch=self.args.BATCH)
+        self.dataset = fly_Dataset()
+        self.x_train, self.y_train, self.x_val, self.y_val = self.dataset.get_all_processor_data()
+        # 初始化模型
+        self.model = Net(num_classes=self.args.NUM_CLASSES)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = self.model.to(self.device)
+
+        self.criterion = torch.nn.CrossEntropyLoss()
+
+    def get_loader(self, json_path_list, label_list,
+                   image_height=300, image_width=300, grid_expand=False):
+        """生产data loader"""
+        dataset = CustomDataset(json_path_list, label_list,
+                                image_height=image_height, image_width=image_width,
+                                grid_expand=grid_expand)
+
+        temp = dataset[0]
+
+        return DataLoader(dataset,
+                          batch_size=self.args.BATCH,
+                          num_workers=0,
+                          shuffle=True)
+
+    def train(self):
+        """模型训练"""
+        train_data_loader = self.get_loader(self.x_train, self.y_train, grid_expand=False)
+        self.model.train()
+
+        # 设置优化器
+        optimizer = optim.SGD(self.model.parameters(), lr=0.0001, momentum=0.9)
+        # Decay LR by a factor of 0.1 every 7 epochs
+        scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+
+        _logger.info("start training.")
+        # 记录最佳评估loss和accuracy
+        best_loss = np.inf
+        best_accuracy = -1
+        for epoch in range(self.args.EPOCHS):
+            running_loss = 0.0
+            running_accuracy = 0
+            for batch_idx, (images, labels) in enumerate(train_data_loader):
+                # 将数据拷贝到GPU上
+                images = images.to(self.device)
+                labels = labels.to(self.device)
+
+                # zero the parameter gradients
+                optimizer.zero_grad()
+
+                outputs = self.model(images)
+                _, predicts = torch.max(outputs, dim=1)
+                # 计算损失
+                loss = self.criterion(outputs, labels)
+
+                # backward
+                loss.backward()
+                optimizer.step()
+
+                # statistics
+                running_loss += loss.item() * images.size(0)
+                running_accuracy += torch.sum(predicts == labels.data)
+
+            # scheduler step update learning ratio
+            scheduler.step()
+            _logger.info("every epoch loss: {}, accuracy: {}.".format(running_loss,
+                                                                      running_accuracy))
+
+            # 进行评估, 获取最佳评估损失，保存best模型
+            evaluate_loss, evaluate_accuracy = self.evaluate()
+            if evaluate_loss < best_loss:
+                best_loss = evaluate_loss
+                self.save_model(os.path.join(MODEL_PATH, '{}.pkl'.format('best')))
+
+        _logger.info("finish trained.")
+
+        return self.model
+
+    def evaluate(self):
+        """模型评估"""
+        val_data_loader = self.get_loader(self.x_val, self.y_val, grid_expand=False)
+        self.model.eval()
+
+        _logger.info("start evaluating.")
+        eval_loss_total = 0.0
+        eval_accuracy_total = 0.0
+        with torch.no_grad():
+            for batch_idx, (images, labels) in enumerate(val_data_loader):
+                # 将数据拷贝到GPU上
+                images = images.to(self.device)
+                labels = labels.to(self.device)
+
+                outputs = self.model(images)
+                _, predicts = torch.max(outputs, dim=1)
+                # 计算损失
+                loss = self.criterion(outputs, labels)
+
+                # statistics
+                eval_loss_total += loss.item() * images.size(0)
+                eval_accuracy_total += torch.sum(predicts == labels.data)
+
+        _logger.info("finish evaluated.")
+
+        return eval_loss_total, eval_accuracy_total
+
+    def save_model(self, model_path):
+        """保存模型"""
+        torch.save(self.model.state_dict(), model_path)
+
+
+if __name__ == "__main__":
+    # 项目的超参
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-e", "--EPOCHS", default=10, type=int, help="train epochs")
+    parser.add_argument("-b", "--BATCH", default=2, type=int, help="batch size")
+    parser.add_argument("-n", "--NUM_CLASSES", default=40, type=int, help="number of categories")
+    args = parser.parse_args()
+
+    main = Main(args)
+    main.train()
