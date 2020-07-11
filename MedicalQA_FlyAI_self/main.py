@@ -208,7 +208,7 @@ class Main(FlyAI):
     def evaluate(self):
         """模型评估"""
         test_dataset = MedicalQADataset(self.test_dataset_ids)
-        test_data_loader = DataLoader(test_dataset, batch_size=self.args.BATCH,
+        test_data_loader = DataLoader(test_dataset, batch_size=2,  # self.args.BATCH,
                                       shuffle=True, collate_fn=self.collate_fn)
 
         self.model.eval()

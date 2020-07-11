@@ -13,3 +13,12 @@ if not os.path.exists(MODEL_PATH):
     os.makedirs(MODEL_PATH)
 # 词汇表路径
 VOCAB_PATH = os.path.join(sys.path[0], 'data', 'input', 'model', 'vocab_small.txt')
+
+
+class PredictConfig(object):
+    """预测参数设置"""
+    temperature = 1.0
+    repetition_penalty = 1.0
+    topk = 8
+    topp = 0.0
+    max_len = 100

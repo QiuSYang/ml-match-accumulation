@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*
 import os
 import argparse
-from path import DATA_PATH, MODEL_PATH, VOCAB_PATH, MODEL_PATH_BEST
+from path import DATA_PATH, MODEL_PATH, VOCAB_PATH, MODEL_PATH_BEST, PredictConfig
 from data_helper import load_dict, text2id
 from flyai.framework import FlyAI
 import torch
@@ -28,9 +28,9 @@ class Prediction(FlyAI):
         """
         模型初始化，必须在构造方法中加载模型
         """
-        self.args = set_predict_args()
-        self.args.cuda = torch.cuda.is_available()
-        self.device = 'cuda' if self.args.cuda else 'cpu'
+        self.args = PredictConfig()  # set_predict_args()
+        self.cuda = torch.cuda.is_available()
+        self.device = 'cuda' if self.cuda else 'cpu'
 
         self.tokenizer = BertTokenizer(vocab_file=VOCAB_PATH)
         self.model = GPT2LMHeadModel.from_pretrained(MODEL_PATH_BEST)
