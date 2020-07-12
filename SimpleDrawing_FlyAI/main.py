@@ -13,6 +13,7 @@ import flyai
 from flyai.dataset import Dataset as fly_Dataset
 from path import MODEL_PATH, DATA_PATH
 import numpy as np
+from PIL import Image
 import pandas as pd
 import torch
 import torch.optim as optim
@@ -57,7 +58,7 @@ data_transforms = {
 
 
 class CustomDataset(Dataset):
-    def __init__(self, json_path_list, label_list,
+    def __init__(self, json_path_list, label_list, data_type='val',
                  image_height=300, image_width=300, grid_expand=False):
         """
         :param json_path_list: 所有文件列表, json文件包含一个字段‘drawing’, 包含所有绘制点x, y坐标点
@@ -72,9 +73,10 @@ class CustomDataset(Dataset):
         self.expand_border = [(-1, -1), (-1, 0), (-1, 1),
                               (0, -1), (0, 0), (0, 1),
                               (1, -1), (1, 0), (1, 1)]
+        self.data_type = data_type
         self.image_height = image_height
         self.image_width = image_width
-        self.image_show = True
+        self.image_show = False
 
     def __getitem__(self, index):
         json_path = os.path.join(DATA_PATH, self.json_path_list[index])
@@ -83,15 +85,17 @@ class CustomDataset(Dataset):
             xy_coordinates_dict = json.load(f)
         # 将坐标转为图像数据
         image_data = self.xy_to_image(xy_coordinates=xy_coordinates_dict.get('drawing'))
+        PIL_image = Image.fromarray(image_data)
+        image = data_transforms[self.data_type](PIL_image)
         label = self.label_list[index]
 
-        return image_data, label
+        return image, label
 
     def __len__(self):
         return len(self.json_path_list)
 
     def xy_to_image(self, xy_coordinates):
-        image_data = np.zeros((self.image_height, self.image_width), dtype=np.float)
+        image_data = np.zeros((self.image_height, self.image_width, 3), dtype=np.uint8)
         y, x = [], []
         for xy in xy_coordinates:
             # 有所有坐标入列(横纵坐标)
@@ -120,9 +124,9 @@ class CustomDataset(Dataset):
                     elif x_i >= self.image_width:
                         x_i = self.image_width - 1
 
-                    image_data[y_i, x_i] = 1
+                    image_data[y_i, x_i, :] = 255
             else:
-                image_data[y[i], x[i]] = 1
+                image_data[y[i], x[i], :] = 255
 
         if self.image_show:
             cv2.imshow('image_data', image_data)
@@ -160,7 +164,7 @@ class Main(object):
                                 image_height=image_height, image_width=image_width,
                                 grid_expand=grid_expand)
 
-        temp = dataset[0]
+        # temp = dataset[0]
 
         return DataLoader(dataset,
                           batch_size=self.args.BATCH,
@@ -169,7 +173,7 @@ class Main(object):
 
     def train(self):
         """模型训练"""
-        train_data_loader = self.get_loader(self.x_train, self.y_train, grid_expand=False)
+        train_data_loader = self.get_loader(self.x_train, self.y_train, grid_expand=True)
         self.model.train()
 
         # 设置优化器
@@ -187,6 +191,8 @@ class Main(object):
             for batch_idx, (images, labels) in enumerate(train_data_loader):
                 # 将数据拷贝到GPU上
                 images = images.to(self.device)
+                # tensor 类型转换
+                labels = torch.as_tensor(labels, dtype=torch.long)
                 labels = labels.to(self.device)
 
                 # zero the parameter gradients
@@ -212,9 +218,12 @@ class Main(object):
 
             # 进行评估, 获取最佳评估损失，保存best模型
             evaluate_loss, evaluate_accuracy = self.evaluate()
+            _logger.info("every epoch evaluate loss: {}, accuracy: {}.".format(evaluate_loss,
+                                                                               evaluate_accuracy))
             if evaluate_loss < best_loss:
+                _logger.info("save best model.")
                 best_loss = evaluate_loss
-                self.save_model(os.path.join(MODEL_PATH, '{}.pkl'.format('best')))
+                self.save_model(MODEL_PATH, '{}.pkl'.format('best'))
 
         _logger.info("finish trained.")
 
@@ -222,7 +231,7 @@ class Main(object):
 
     def evaluate(self):
         """模型评估"""
-        val_data_loader = self.get_loader(self.x_val, self.y_val, grid_expand=False)
+        val_data_loader = self.get_loader(self.x_val, self.y_val, grid_expand=True)
         self.model.eval()
 
         _logger.info("start evaluating.")
@@ -232,6 +241,8 @@ class Main(object):
             for batch_idx, (images, labels) in enumerate(val_data_loader):
                 # 将数据拷贝到GPU上
                 images = images.to(self.device)
+                # tensor 类型转换
+                labels = torch.as_tensor(labels, dtype=torch.long)
                 labels = labels.to(self.device)
 
                 outputs = self.model(images)
@@ -247,9 +258,12 @@ class Main(object):
 
         return eval_loss_total, eval_accuracy_total
 
-    def save_model(self, model_path):
+    def save_model(self, model_path, model_name):
         """保存模型"""
-        torch.save(self.model.state_dict(), model_path)
+        if not os.path.exists(model_path):
+            # 路径不存在，则创建路径
+            os.makedirs(model_path)
+        torch.save(self.model.state_dict(), os.path.join(model_path, model_name))
 
 
 if __name__ == "__main__":
