@@ -173,7 +173,7 @@ class Main(object):
 
     def train(self):
         """模型训练"""
-        train_data_loader = self.get_loader(self.x_train, self.y_train, grid_expand=True)
+        train_data_loader = self.get_loader(self.x_train, self.y_train, grid_expand=False)
         self.model.train()
 
         # 设置优化器
@@ -231,7 +231,7 @@ class Main(object):
 
     def evaluate(self):
         """模型评估"""
-        val_data_loader = self.get_loader(self.x_val, self.y_val, grid_expand=True)
+        val_data_loader = self.get_loader(self.x_val, self.y_val, grid_expand=False)
         self.model.eval()
 
         _logger.info("start evaluating.")
@@ -269,8 +269,8 @@ class Main(object):
 if __name__ == "__main__":
     # 项目的超参
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--EPOCHS", default=10, type=int, help="train epochs")
-    parser.add_argument("-b", "--BATCH", default=2, type=int, help="batch size")
+    parser.add_argument("-e", "--EPOCHS", default=32, type=int, help="train epochs")
+    parser.add_argument("-b", "--BATCH", default=16, type=int, help="batch size")
     parser.add_argument("-n", "--NUM_CLASSES", default=40, type=int, help="number of categories")
     args = parser.parse_args()
 

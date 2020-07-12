@@ -76,7 +76,7 @@ class Model(Base):
             json_path = os.path.join(DATA_PATH, json_path)
             with open(json_path) as f:
                 draw = json.load(f)
-            image_numpy = xy_to_image(draw.get('drawing'), grid_expand=True)
+            image_numpy = xy_to_image(draw.get('drawing'), grid_expand=False)
             PIL_image = Image.fromarray(image_numpy)
             image = data_transforms['val'](PIL_image)
             images.append(image)
