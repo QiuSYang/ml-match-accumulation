@@ -95,7 +95,6 @@ class CustomDataset(Dataset):
         return len(self.json_path_list)
 
     def xy_to_image(self, xy_coordinates):
-        image_data = np.zeros((self.image_height, self.image_width, 3), dtype=np.uint8)
         y, x = [], []
         for xy in xy_coordinates:
             # 有所有坐标入列(横纵坐标)
@@ -104,11 +103,19 @@ class CustomDataset(Dataset):
         x_max, x_min = max(x), min(x)
         y_max, y_min = max(y), min(y)
         width, height = x_max - x_min + 1, y_max - y_min + 1
+        if width > self.image_width or height > self.image_height:
+            # 最大矩形框大于初始图像宽高
+            self.image_width = max(width, height) + 10
+            self.image_height = max(width, height) + 10
+
         d_width = math.floor((self.image_width - width) / 2.0 + 0.5)
         d_height = math.floor((self.image_height - height) / 2.0 + 0.5)
 
         x = np.array(x) + d_width  # 全部加上偏移量
         y = np.array(y) + d_height
+
+        # 初始化图像数据
+        image_data = np.zeros((self.image_height, self.image_width, 3), dtype=np.uint8)
 
         for i in range(len(x)):
             if self.grid_expand:

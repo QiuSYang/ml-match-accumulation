@@ -22,7 +22,6 @@ expand_border = [(-1, -1), (-1, 0), (-1, 1),
 
 def xy_to_image(xy_coordinates,
                 image_height=300, image_width=300, grid_expand=False):
-    image_data = np.zeros((image_height, image_width, 3), dtype=np.uint8)
     y, x = [], []
     for xy in xy_coordinates:
         # 有所有坐标入列(横纵坐标)
@@ -31,11 +30,19 @@ def xy_to_image(xy_coordinates,
     x_max, x_min = max(x), min(x)
     y_max, y_min = max(y), min(y)
     width, height = x_max - x_min + 1, y_max - y_min + 1
+    if width > image_width or height > image_height:
+        # 最大矩形框大于初始图像宽高
+        image_width = max(width, height) + 10
+        image_height = max(width, height) + 10
+
     d_width = math.floor((image_width - width) / 2.0 + 0.5)
     d_height = math.floor((image_height - height) / 2.0 + 0.5)
 
     x = np.array(x) + d_width  # 全部加上偏移量
     y = np.array(y) + d_height
+
+    # 初始化图像数据
+    image_data = np.zeros((image_height, image_width, 3), dtype=np.uint8)
 
     for i in range(len(x)):
         if grid_expand:
