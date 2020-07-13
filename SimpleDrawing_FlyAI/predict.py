@@ -11,6 +11,6 @@ class_mapping = {0: "airplane", 1:  "apple", 2: "basketball", 3: "bear", 4: "bed
 
 data = Dataset()
 model = Model(data)
-x_test = [{'json_path': 'draws/draw_15786.json'}, {'json_path': 'draws/draw_20190.json'}]
+x_test = [{'json_path': 'draw_15786.json'}, {'json_path': 'draws/draw_20190.json'}]
 p = model.predict_all(x_test)
 print(p)

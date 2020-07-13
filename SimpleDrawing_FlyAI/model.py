@@ -27,13 +27,14 @@ def xy_to_image(xy_coordinates,
         # 有所有坐标入列(横纵坐标)
         y.extend(xy[0])
         x.extend(xy[1])
+    # 寻找边界
     x_max, x_min = max(x), min(x)
     y_max, y_min = max(y), min(y)
     width, height = x_max - x_min + 1, y_max - y_min + 1
     if x_max > image_width or y_max > image_height:
         # 最大矩形框边界大于初始图像宽高
-        image_width = max(x_max, y_max) + 10
-        image_height = max(x_max, y_max) + 10
+        image_width = math.ceil(max(x_max, y_max)/10.0)*10 + 10
+        image_height = math.ceil(max(x_max, y_max)/10.0)*10 + 10
 
     d_width = math.floor((image_width - width) / 2.0 + 0.5)
     d_height = math.floor((image_height - height) / 2.0 + 0.5)

@@ -100,13 +100,14 @@ class CustomDataset(Dataset):
             # 有所有坐标入列(横纵坐标)
             y.extend(xy[0])
             x.extend(xy[1])
+        # 寻找边界
         x_max, x_min = max(x), min(x)
         y_max, y_min = max(y), min(y)
         width, height = x_max - x_min + 1, y_max - y_min + 1
         if x_max > self.image_width or y_max > self.image_height:
             # 最大矩形框边界大于初始图像宽高
-            self.image_width = max(x_max, y_max) + 10
-            self.image_height = max(x_max, y_max) + 10
+            self.image_width = math.ceil(max(x_max, y_max)/10.0)*10 + 10
+            self.image_height = math.ceil(max(x_max, y_max)/10.0)*10 + 10
 
         d_width = math.floor((self.image_width - width) / 2.0 + 0.5)
         d_height = math.floor((self.image_height - height) / 2.0 + 0.5)
