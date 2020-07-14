@@ -231,13 +231,14 @@ class Main(object):
 
             # scheduler step update learning ratio
             scheduler.step()
-            _logger.info("every epoch loss: {}, accuracy: {}.".format(running_loss,
-                                                                      running_accuracy))
+            _logger.info("The {} epoch loss: {}, accuracy: {}.".format(epoch, running_loss,
+                                                                       running_accuracy))
 
             # 进行评估, 获取最佳评估损失，保存best模型
             evaluate_loss, evaluate_accuracy = self.evaluate()
-            _logger.info("every epoch evaluate loss: {}, accuracy: {}.".format(evaluate_loss,
-                                                                               evaluate_accuracy))
+            _logger.info("The {} epoch evaluate loss: {}, accuracy: {}.".format(epoch,
+                                                                                evaluate_loss,
+                                                                                evaluate_accuracy))
             if evaluate_loss < best_loss:
                 _logger.info("save best model.")
                 best_loss = evaluate_loss
