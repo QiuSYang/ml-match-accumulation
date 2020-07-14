@@ -12,6 +12,11 @@ from net import Net
 from main import data_transforms
 from PIL import Image
 
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(filename)s - %(levelname)s - %(message)s',
+                    datefmt='%m/%d/%Y %H:%M:%S')
+_logger = logging.getLogger(__name__)
+
 MODEL_NAME = "best.pkl"
 NUM_CLASSES = 40
 BATCH_SIZE = 64  # 每次预测多少张图片
@@ -20,8 +25,7 @@ expand_border = [(-1, -1), (-1, 0), (-1, 1),
                               (1, -1), (1, 0), (1, 1)]
 
 
-def xy_to_image(xy_coordinates,
-                image_height=300, image_width=300, grid_expand=False):
+def xy_to_image(xy_coordinates, grid_expand=False):
     y, x = [], []
     for xy in xy_coordinates:
         # 有所有坐标入列(横纵坐标)
@@ -30,38 +34,52 @@ def xy_to_image(xy_coordinates,
     # 寻找边界
     x_max, x_min = max(x), min(x)
     y_max, y_min = max(y), min(y)
-    width, height = x_max - x_min + 1, y_max - y_min + 1
-    if x_max > image_width or y_max > image_height:
-        # 最大矩形框边界大于初始图像宽高
-        image_width = math.ceil(max(x_max, y_max)/10.0)*10 + 10
-        image_height = math.ceil(max(x_max, y_max)/10.0)*10 + 10
+    # width, height = x_max - x_min + 1, y_max - y_min + 1
+    # if x_max > image_width or y_max > image_height:
+    #     # 最大矩形框边界大于初始图像宽高
+    #     image_width = math.ceil(max(x_max, y_max)/10.0)*10 + 10
+    #     image_height = math.ceil(max(x_max, y_max)/10.0)*10 + 10
+    #
+    # d_width = math.floor((image_width - width) / 2.0 + 0.5)
+    # d_height = math.floor((image_height - height) / 2.0 + 0.5)
+    #
+    # x = np.array(x) + d_width  # 全部加上偏移量
+    # y = np.array(y) + d_height
 
-    d_width = math.floor((image_width - width) / 2.0 + 0.5)
-    d_height = math.floor((image_height - height) / 2.0 + 0.5)
-
-    x = np.array(x) + d_width  # 全部加上偏移量
-    y = np.array(y) + d_height
+    # 自动化计算数据最大边界位置, 最大矩形框些微向外扩充
+    image_width = math.ceil(max(x_max, y_max) / 10.0) * 10 + 10
+    image_height = image_width  # 长宽相等的矩形框
 
     # 初始化图像数据
     image_data = np.zeros((image_height, image_width, 3), dtype=np.uint8)
 
     for i in range(len(x)):
         if grid_expand:
-            for dx, dy in expand_border:
-                y_i, x_i = y[i] + dy, x[i] + dx
-                # 边界判定
-                if y_i < 0:
-                    y_i = 0
-                elif y_i >= image_height:
-                    y_i = image_height - 1
-                if x_i < 0:
-                    x_i = 0
-                elif x_i >= image_width:
-                    x_i = image_width - 1
+            try:
+                for dx, dy in expand_border:
+                    y_i, x_i = y[i] + dy, x[i] + dx
+                    # 边界判定
+                    if y_i < 0:
+                        y_i = 0
+                    elif y_i >= image_height:
+                        y_i = image_height - 1
+                    if x_i < 0:
+                        x_i = 0
+                    elif x_i >= image_width:
+                        x_i = image_width - 1
 
-                image_data[y_i, x_i, :] = 255
+                    image_data[y_i, x_i, :] = 255
+            except IndexError:
+                _logger.info("Current position index: ({}, {}).".format(y_i, x_i))
+                _logger.info("Current image size: {}.".format(image_height))
+                raise IndexError
         else:
-            image_data[y[i], x[i], :] = 255
+            try:
+                image_data[y[i], x[i], :] = 255
+            except IndexError:
+                _logger.info("Current position index: ({}, {}).".format(y_i, x_i))
+                _logger.info("Current image size: {}.".format(image_height))
+                raise IndexError
 
     return image_data
 
@@ -89,7 +107,7 @@ class Model(Base):
             image = data_transforms['val'](PIL_image)
             images.append(image)
 
-        print("start predict.")
+        _logger.info("start predict.")
         turn = math.ceil(len(images)/float(BATCH_SIZE))
 
         predicts = []

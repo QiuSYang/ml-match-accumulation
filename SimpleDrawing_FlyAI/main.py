@@ -58,13 +58,11 @@ data_transforms = {
 
 
 class CustomDataset(Dataset):
-    def __init__(self, json_path_list, label_list, data_type='val',
-                 image_height=300, image_width=300, grid_expand=False):
+    def __init__(self, json_path_list, label_list,
+                 data_type='val', grid_expand=False):
         """
         :param json_path_list: 所有文件列表, json文件包含一个字段‘drawing’, 包含所有绘制点x, y坐标点
         :param label_list: 每个json文件对应的label
-        :param image_height: 坐标在图像上表示的图像高度
-        :param image_width: 坐标在图像上表示的图像宽度
         :param grid_expand: 是否需要将对应单点8邻域扩张
         """
         self.json_path_list = json_path_list
@@ -74,8 +72,6 @@ class CustomDataset(Dataset):
                               (0, -1), (0, 0), (0, 1),
                               (1, -1), (1, 0), (1, 1)]
         self.data_type = data_type
-        self.image_height = image_height
-        self.image_width = image_width
         self.image_show = False
 
     def __getitem__(self, index):
@@ -103,38 +99,52 @@ class CustomDataset(Dataset):
         # 寻找边界
         x_max, x_min = max(x), min(x)
         y_max, y_min = max(y), min(y)
-        width, height = x_max - x_min + 1, y_max - y_min + 1
-        if x_max > self.image_width or y_max > self.image_height:
-            # 最大矩形框边界大于初始图像宽高
-            self.image_width = math.ceil(max(x_max, y_max)/10.0)*10 + 10
-            self.image_height = math.ceil(max(x_max, y_max)/10.0)*10 + 10
+        # width, height = x_max - x_min + 1, y_max - y_min + 1
+        # if x_max > self.image_width or y_max > self.image_height:
+        #     # 最大矩形框边界大于初始图像宽高
+        #     self.image_width = math.ceil(max(x_max, y_max)/10.0)*10 + 10
+        #     self.image_height = math.ceil(max(x_max, y_max)/10.0)*10 + 10
+        #
+        # d_width = math.floor((self.image_width - width) / 2.0 + 0.5)
+        # d_height = math.floor((self.image_height - height) / 2.0 + 0.5)
+        #
+        # x = np.array(x) + d_width  # 全部加上偏移量
+        # y = np.array(y) + d_height
 
-        d_width = math.floor((self.image_width - width) / 2.0 + 0.5)
-        d_height = math.floor((self.image_height - height) / 2.0 + 0.5)
-
-        x = np.array(x) + d_width  # 全部加上偏移量
-        y = np.array(y) + d_height
+        # 自动化计算数据最大边界位置, 最大矩形框些微向外扩充
+        image_width = math.ceil(max(x_max, y_max) / 10.0) * 10 + 10
+        image_height = image_width  # 长宽相等的矩形框
 
         # 初始化图像数据
-        image_data = np.zeros((self.image_height, self.image_width, 3), dtype=np.uint8)
+        image_data = np.zeros((image_height, image_width, 3), dtype=np.uint8)
 
         for i in range(len(x)):
             if self.grid_expand:
-                for dx, dy in self.expand_border:
-                    y_i, x_i = y[i] + dy, x[i] + dx
-                    # 边界判定
-                    if y_i < 0:
-                        y_i = 0
-                    elif y_i >= self.image_height:
-                        y_i = self.image_height - 1
-                    if x_i < 0:
-                        x_i = 0
-                    elif x_i >= self.image_width:
-                        x_i = self.image_width - 1
+                try:
+                    for dx, dy in self.expand_border:
+                        y_i, x_i = y[i] + dy, x[i] + dx
+                        # 边界判定
+                        if y_i < 0:
+                            y_i = 0
+                        elif y_i >= image_height:
+                            y_i = image_height - 1
+                        if x_i < 0:
+                            x_i = 0
+                        elif x_i >= image_width:
+                            x_i = image_width - 1
 
-                    image_data[y_i, x_i, :] = 255
+                        image_data[y_i, x_i, :] = 255
+                except IndexError:
+                    _logger.info("Current position index: ({}, {}).".format(y_i, x_i))
+                    _logger.info("Current image size: {}.".format(image_height))
+                    raise IndexError
             else:
-                image_data[y[i], x[i], :] = 255
+                try:
+                    image_data[y[i], x[i], :] = 255
+                except IndexError:
+                    _logger.info("Current position index: ({}, {}).".format(y_i, x_i))
+                    _logger.info("Current image size: {}.".format(image_height))
+                    raise IndexError
 
         if self.image_show:
             cv2.imshow('image_data', image_data)
@@ -166,11 +176,10 @@ class Main(object):
         self.criterion = torch.nn.CrossEntropyLoss()
 
     def get_loader(self, json_path_list, label_list,
-                   image_height=300, image_width=300, grid_expand=False):
+                   data_type='val', grid_expand=False):
         """生产data loader"""
         dataset = CustomDataset(json_path_list, label_list,
-                                image_height=image_height, image_width=image_width,
-                                grid_expand=grid_expand)
+                                data_type=data_type, grid_expand=grid_expand)
 
         # temp = dataset[0]
 
@@ -181,7 +190,8 @@ class Main(object):
 
     def train(self):
         """模型训练"""
-        train_data_loader = self.get_loader(self.x_train, self.y_train, grid_expand=False)
+        train_data_loader = self.get_loader(self.x_train, self.y_train,
+                                            data_type='train', grid_expand=False)
         self.model.train()
 
         # 设置优化器
@@ -239,7 +249,8 @@ class Main(object):
 
     def evaluate(self):
         """模型评估"""
-        val_data_loader = self.get_loader(self.x_val, self.y_val, grid_expand=False)
+        val_data_loader = self.get_loader(self.x_val, self.y_val,
+                                          data_type='val', grid_expand=False)
         self.model.eval()
 
         _logger.info("start evaluating.")

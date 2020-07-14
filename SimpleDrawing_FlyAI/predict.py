@@ -9,8 +9,10 @@ class_mapping = {0: "airplane", 1:  "apple", 2: "basketball", 3: "bear", 4: "bed
                  30: "matches", 31: "microphone", 32: "monkey", 33: "mosquito", 34: "mountain", 35: "mushroom",
                  36: "ocean", 37: "panda", 38: "piano", 39: "pig"}
 
-data = Dataset()
-model = Model(data)
-x_test = [{'json_path': 'draw_15786.json'}, {'json_path': 'draws/draw_20190.json'}]
-p = model.predict_all(x_test)
-print(p)
+
+if __name__ == "__main__":
+    data = Dataset()
+    model = Model(data)
+    x_test = [{'json_path': 'draws/draw_15786.json'}, {'json_path': 'draws/draw_20190.json'}]
+    p = model.predict_all(x_test)
+    print(p)
