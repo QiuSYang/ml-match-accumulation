@@ -96,7 +96,14 @@ class Main(FlyAI):
             model = GPT2LMHeadModel.from_pretrained(self.args.pretrained_model)
         else:
             # 若没有指定预训练模型，则初始化模型
-            model_config = GPT2Config(self.args.model_config)
+            model_config = GPT2Config.from_json_file(self.args.model_config)
+            # 将一些特殊字符id都设置为0
+            if model_config.eos_token_id != 0:
+                model_config.eos_token_id = 0
+            if model_config.bos_token_id != 0:
+                model_config.bos_token_id = 0
+            if model_config.pad_token_id != 0:
+                model_config.pad_token_id = 0
             model = GPT2LMHeadModel(config=model_config)
 
         # 根据tokenizer的vocabulary调整GPT2模型的voca的大小
