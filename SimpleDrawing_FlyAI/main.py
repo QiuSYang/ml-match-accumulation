@@ -66,7 +66,14 @@ class CustomDataset(Dataset):
         :param grid_expand: 是否需要将对应单点8邻域扩张
         """
         self.json_path_list = json_path_list
-        self.label_list = label_list
+        self.label_list = label_list.tolist()
+        # 将数据转为tensor
+        if not isinstance(self.label_list, torch.Tensor):
+            if isinstance(self.label_list, np.ndarray):
+                self.label_list = torch.from_numpy(self.label_list)
+            if isinstance(self.label_list, list):
+                self.label_list = torch.tensor(self.label_list)
+
         self.grid_expand = grid_expand
         self.expand_border = [(-1, -1), (-1, 0), (-1, 1),
                               (0, -1), (0, 0), (0, 1),
@@ -181,7 +188,7 @@ class Main(object):
         dataset = CustomDataset(json_path_list, label_list,
                                 data_type=data_type, grid_expand=grid_expand)
 
-        # temp = dataset[0]
+        temp = dataset[0]
 
         return DataLoader(dataset,
                           batch_size=self.args.BATCH,
