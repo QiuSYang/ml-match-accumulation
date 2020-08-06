@@ -27,7 +27,7 @@ class Main(FlyAI):
         # 为当前GPU设置随机种子；如果使用多个GPU，应该使用torch.cuda.manual_seed_all()为所有的GPU设置种子。
         # 当得到比较好的结果时我们通常希望这个结果是可以复现
         # 设置GPU
-        self.device = 'cuda' if args.cuda else 'cpu'
+        self.device = 'cuda' if self.args.cuda else 'cpu'
         if self.args.seed:
             self.set_random_seed()
 
