@@ -119,7 +119,7 @@ class Main(FlyAI):
         train_data_loader = DataLoader(train_dataset, batch_size=self.args.BATCH,
                                        shuffle=True, collate_fn=self.collate_fn)
 
-        self.model.train()
+        # self.model.train()
 
         if self.args.max_steps > 0:
             t_total = self.args.max_steps
@@ -152,6 +152,8 @@ class Main(FlyAI):
         best_loss = np.inf
         best_accuracy = -1
         for epoch in range(self.args.EPOCHS):
+            # 设置模式
+            self.model.train()
             # epoch_start_time = time.clock()
             for batch_idx, input_ids in enumerate(train_data_loader):
                 # 注意：GPT2模型的forward()函数, 是对于给定的context, 生成一个token，而不是生成一串token

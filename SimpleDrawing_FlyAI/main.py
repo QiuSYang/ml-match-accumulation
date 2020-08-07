@@ -188,7 +188,7 @@ class Main(object):
         dataset = CustomDataset(json_path_list, label_list,
                                 data_type=data_type, grid_expand=grid_expand)
 
-        temp = dataset[0]
+        # temp = dataset[0]
 
         return DataLoader(dataset,
                           batch_size=self.args.BATCH,
@@ -199,7 +199,7 @@ class Main(object):
         """模型训练"""
         train_data_loader = self.get_loader(self.x_train, self.y_train,
                                             data_type='train', grid_expand=False)
-        self.model.train()
+        # self.model.train()
 
         # 设置优化器
         optimizer = optim.SGD(self.model.parameters(), lr=0.0001, momentum=0.9)
@@ -211,6 +211,9 @@ class Main(object):
         best_loss = np.inf
         best_accuracy = -1
         for epoch in range(self.args.EPOCHS):
+            # 设置模式
+            self.model.train()
+
             running_loss = 0.0
             running_accuracy = 0
             for batch_idx, (images, labels) in enumerate(train_data_loader):
