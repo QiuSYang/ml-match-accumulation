@@ -1,0 +1,10 @@
+*.pyc
+.idea/
+MedicalQA_FlyAI_self/data/
+MedicalQA_FlyAI_self/.idea/
+NER_new_FlyAI_self/data/
+NER_new_FlyAI_self/.idea/
+PsychologicalQA_FlyAI/data/
+PsychologicalQA_FlyAI/.idea/
+SimpleDrawing_FlyAI/data/
+SimpleDrawing_FlyAI/.idea/
