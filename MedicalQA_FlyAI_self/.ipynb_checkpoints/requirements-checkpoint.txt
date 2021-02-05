@@ -1,0 +1,10 @@
+flyai-gpu
+six
+numpy
+regex
+ufile
+requests
+tornado
+scikit-learn
+transformers==2.11.0
+torch==1.3.1
