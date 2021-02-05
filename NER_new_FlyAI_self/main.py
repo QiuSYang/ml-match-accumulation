@@ -124,7 +124,7 @@ class NerNet(object):
         )
 
     def get_dataset(self, datasets):
-        x_train, y_train, x_val, y_val = dataset.get_all_data()
+        x_train, y_train, x_val, y_val = datasets.get_all_data()
         x_train_list, y_train_list = [], []
         x_val_list, y_val_list = [], []
         for i in range(len(x_train)):
