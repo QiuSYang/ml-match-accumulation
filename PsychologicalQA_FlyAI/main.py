@@ -31,17 +31,13 @@ logger = logging.getLogger(__name__)
 遇到问题不要着急，添加小姐姐微信，扫描项目里面的：FlyAI小助手二维码-小姐姐在线解答您的问题.png
 """
 
-# # 项目的超参，不使用可以删除
-# parser = argparse.ArgumentParser()
-# parser.add_argument("-e", "--EPOCHS", default=10, type=int, help="train epochs")
-# parser.add_argument("-b", "--BATCH", default=32, type=int, help="batch size")
-# args = parser.parse_args()
-
 
 class Main(FlyAI):
     """
     项目中必须继承FlyAI类，否则线上运行会报错。
     """
+    def __init__(self, args):
+        self.args = args
 
     def download_data(self):
         # 根据数据ID下载训练数据
@@ -60,7 +56,8 @@ class Main(FlyAI):
         训练模型，必须实现此方法
         :return:
         """
-        config = HyperParametersConfig()
+        config = HyperParametersConfig(epochs=self.args.EPOCHS,
+                                       batch_size=self.args.BATCH)
 
         parser = HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
         # config_dict = HyperParametersConfig().__dict__
@@ -96,6 +93,13 @@ class Main(FlyAI):
 if __name__ == '__main__':
     logging.basicConfig(format='[%(asctime)s %(filename)s:%(lineno)s] %(message)s', level=logging.INFO,
                         filename=None, filemode='a')
-    main = Main()
+
+    # # 项目的超参，不使用可以删除
+    parser = argparse.ArgumentParser(description="Set train parameter.")
+    parser.add_argument("-e", "--EPOCHS", default=10, type=int, help="train epochs")
+    parser.add_argument("-b", "--BATCH", default=32, type=int, help="batch size")
+    args = parser.parse_args()
+
+    main = Main(args)
     main.download_data()
     main.train()

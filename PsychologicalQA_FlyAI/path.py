@@ -60,7 +60,7 @@ class ModelArguments:
 
 
 class HyperParametersConfig(object):
-    def __init__(self):
+    def __init__(self, epochs=10, batch_size=4):
         # decoder data
         self.max_sequence_len = 512  # context_len + condition_len = target_len
         self.dataset_path = os.path.join(DATA_PATH, "PsychologicalQA/train.csv")
@@ -68,25 +68,26 @@ class HyperParametersConfig(object):
         # train
         self.seed = 2021
         self.model_name_or_path = self.get_pre_train_model_path()  # "thu-coai/CDial-GPT2_LCCC-base"
-        self.output_dir = os.path.join(OUTPUT_PATH, "model")
+        self.output_dir = os.path.join(OUTPUT_PATH, "models")
         self.logging_dir = os.path.join(OUTPUT_PATH, "logs")
 
         gpu_nums = torch.cuda.device_count()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.per_device_train_batch_size = 8
-        self.per_device_eval_batch_size = 8
+        self.per_device_train_batch_size = batch_size
+        self.per_device_eval_batch_size = batch_size
         self.gradient_accumulation_steps = 1
-        self.max_steps = 15000
-        self.warmup_steps = 1500
-        self.save_steps = 1500
-        self.eval_steps = 1500
+        # self.max_steps = 15000
+        self.num_train_epochs = epochs
+        self.warmup_steps = 500
+        self.save_steps = 1000
+        self.eval_steps = 1000
         self.logging_steps = 150
 
         self.local_rank = -1
 
         self.do_train = True
         self.do_eval = True
-        self.evaluation_strategy = "steps"
+        self.evaluation_strategy = "epochs"  # "steps"
         # self.evaluate_during_training = True
         self.prediction_loss_only = True
 
