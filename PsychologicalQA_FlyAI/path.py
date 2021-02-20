@@ -5,6 +5,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional
 import torch
+from flyai.utils import remote_helper
 
 logger = logging.getLogger(__name__)
 DATA_PATH = os.path.join(sys.path[0], 'data', 'input')
@@ -66,7 +67,7 @@ class HyperParametersConfig(object):
 
         # train
         self.seed = 2021
-        self.model_name_or_path = "thu-coai/CDial-GPT2_LCCC-base"
+        self.model_name_or_path = self.get_pre_train_model_path()  # "thu-coai/CDial-GPT2_LCCC-base"
         self.output_dir = os.path.join(OUTPUT_PATH, "model")
         self.logging_dir = os.path.join(OUTPUT_PATH, "logs")
 
@@ -88,3 +89,9 @@ class HyperParametersConfig(object):
         self.evaluation_strategy = "steps"
         # self.evaluate_during_training = True
         self.prediction_loss_only = True
+
+    def get_pre_train_model_path(self):
+        """FLYAI框架下获取预训练模型的PATH"""
+        path = remote_helper.get_remote_data('https://www.flyai.com/m/CDial-GPT2_LCCC-base.zip')
+
+        return path
