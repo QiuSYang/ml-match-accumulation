@@ -2,6 +2,7 @@
 import sys
 import os
 import logging
+import platform
 from dataclasses import dataclass, field
 from typing import Optional
 import torch
@@ -87,12 +88,19 @@ class HyperParametersConfig(object):
 
         self.do_train = True
         self.do_eval = True
-        self.evaluation_strategy = "epochs"  # "steps"
+        self.evaluation_strategy = "epoch"  # "steps"
         # self.evaluate_during_training = True
         self.prediction_loss_only = True
 
     def get_pre_train_model_path(self):
         """FLYAI框架下获取预训练模型的PATH"""
         path = remote_helper.get_remote_data('https://www.flyai.com/m/CDial-GPT2_LCCC-base.zip')
+        if platform.system() == "Linux":
+            path_list = path.split('/')
+            path = "/".join(path_list[:-1])
+        elif platform.system() == "Windows":
+            path_list = path.split('\\')
+            path = "\\".join(path_list[:-1])
 
+        logger.info("Model path: {}".format(path))
         return path
