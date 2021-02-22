@@ -87,7 +87,7 @@ class Main(FlyAI):
         if training_args.do_train:
             trainer.train()
             trainer.save_model()
-            if trainer.is_world_master():
+            if trainer.is_world_process_zero():
                 tokenizer.save_pretrained(training_args.output_dir)
 
 
