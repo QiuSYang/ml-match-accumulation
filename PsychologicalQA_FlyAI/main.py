@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-import argparse
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+import argparse
 import logging
 
 from flyai.data_helper import DataHelper

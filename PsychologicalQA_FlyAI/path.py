@@ -87,7 +87,7 @@ class HyperParametersConfig(object):
         self.local_rank = -1
 
         self.do_train = True
-        self.do_eval = True
+        self.do_eval = False
         self.evaluation_strategy = "epoch"  # "steps"
         # self.evaluate_during_training = True
         self.prediction_loss_only = True
