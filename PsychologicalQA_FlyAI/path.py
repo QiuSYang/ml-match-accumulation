@@ -76,19 +76,19 @@ class HyperParametersConfig(object):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.per_device_train_batch_size = batch_size
         self.per_device_eval_batch_size = batch_size
-        self.gradient_accumulation_steps = 1
+        self.gradient_accumulation_steps = 8
         # self.max_steps = 15000
         self.num_train_epochs = epochs
         self.warmup_steps = 500
         self.save_steps = 1000
-        self.eval_steps = 1000
+        # self.eval_steps = 1000
         self.logging_steps = 150
 
         self.local_rank = -1
 
-        self.do_train = True
-        self.do_eval = False
-        self.evaluation_strategy = "epoch"  # "steps"
+        # self.do_train = True
+        # self.do_eval = False
+        # self.evaluation_strategy = "epoch"  # "steps"
         # self.evaluate_during_training = True
         self.prediction_loss_only = True
 
