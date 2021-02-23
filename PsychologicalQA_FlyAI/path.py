@@ -64,6 +64,7 @@ class HyperParametersConfig(object):
     def __init__(self, epochs=10, batch_size=4):
         # decoder data
         self.max_sequence_len = 512  # context_len + condition_len = target_len
+        self.max_target_len = 50
         self.dataset_path = os.path.join(DATA_PATH, "PsychologicalQA/train.csv")
 
         # train
