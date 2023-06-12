@@ -6,6 +6,6 @@ ufile
 requests
 tornado
 scikit-learn
-transformers==2.11.0
+transformers==4.30.0
 torch==1.5.1
 torchvision==0.6.1
